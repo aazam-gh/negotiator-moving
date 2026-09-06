@@ -1,3 +1,5 @@
 allowBuilds:
   esbuild: set this to true or false
   unrs-resolver: set this to true or false
+patchedDependencies:
+  '@agentmail/convex@0.1.0': patches/@agentmail__convex@0.1.0.patch

@@ -4,13 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@agentmail/convex@0.1.0': 50cd75a14dbfdadf5d19a2eff73df6c50d989e313d3a77f87533bb1c3b70ad63
+
 importers:
 
   .:
     dependencies:
       '@agentmail/convex':
         specifier: ^0.1.0
-        version: 0.1.0(convex-helpers@0.1.123(convex@1.45.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)(zod@4.5.4))(convex@1.45.0(react@19.2.8))
+        version: 0.1.0(patch_hash=50cd75a14dbfdadf5d19a2eff73df6c50d989e313d3a77f87533bb1c3b70ad63)(convex-helpers@0.1.123(convex@1.45.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)(zod@4.5.4))(convex@1.45.0(react@19.2.8))
       '@convex-dev/auth':
         specifier: ^0.0.95
         version: 0.0.95(@auth/core@0.41.3)(convex@1.45.0(react@19.2.8))(react@19.2.8)
@@ -3346,7 +3349,7 @@ packages:
 
 snapshots:
 
-  '@agentmail/convex@0.1.0(convex-helpers@0.1.123(convex@1.45.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)(zod@4.5.4))(convex@1.45.0(react@19.2.8))':
+  '@agentmail/convex@0.1.0(patch_hash=50cd75a14dbfdadf5d19a2eff73df6c50d989e313d3a77f87533bb1c3b70ad63)(convex-helpers@0.1.123(convex@1.45.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)(zod@4.5.4))(convex@1.45.0(react@19.2.8))':
     dependencies:
       '@convex-dev/workpool': 0.3.2(convex-helpers@0.1.123(convex@1.45.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)(zod@4.5.4))(convex@1.45.0(react@19.2.8))
       convex: 1.45.0(react@19.2.8)

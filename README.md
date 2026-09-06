@@ -48,6 +48,8 @@ npx convex env set SITE_URL https://<deployment>.convex.site
 Register AgentMail's webhook as `https://<deployment>.convex.site/agentmail/webhook`.
 Register Stripe's webhook as `https://<deployment>.convex.site/stripe/webhook`. The public app exposes an Upgrade to Pro action when `STRIPE_PRICE_ID` is configured. Keep `BILLING_REQUIRED` disabled until the test-mode checkout and webhook have been verified end to end.
 
+The AgentMail component is isolated from the app deployment environment, so the Convex app config explicitly passes the AgentMail credentials into that component. This is required for its durable send worker and webhook callback path to operate in production.
+
 Without keys, the fictional demo remains usable while real integration calls return clear configuration errors.
 
 ## Verify

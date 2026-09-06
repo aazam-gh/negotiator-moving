@@ -8,9 +8,11 @@ Negotiator is an approval-first procurement workflow for moving services. It par
 
 - Production Convex deployment and static hosting are live.
 - A real authenticated production mission reached Firecrawl discovery and returned five scored provider candidates with source links.
-- The approval gate held at `Contacted 0`; no real provider outreach was sent.
+- The approval gate held at `Contacted 0`; no real provider outreach was sent. A separate disposable AgentMail inbox was used for a controlled production round-trip.
 - The fictional demo proves the three-row quote comparison UI.
 - AgentMail lifecycle projection, durable research run state, password onboarding, Stripe checkout/webhook wiring, and server-side subscription lookup are deployed.
+- Controlled AgentMail proof passed: durable labeled send, in-thread inbound reply, webhook delivery, deterministic quote extraction, and mission transition to `comparing`.
+- AgentMail component environment wiring is patched and deployed so its isolated durable worker receives production credentials.
 - Verification passed: 15 tests, TypeScript, ESLint, production build, Convex deployment, static upload, public HTTP 200, JWKS HTTP 200, and Stripe webhook route HTTP 200.
 
 ## SaaS boundaries
