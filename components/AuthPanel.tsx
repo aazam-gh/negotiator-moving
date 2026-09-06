@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { useConvexAuth } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { api } from "@/convex/_generated/api";
 
 export function AuthPanel() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { signIn, signOut } = useAuthActions();
+  const billing = useQuery(api.billing.config, {});
+  const createCheckout = useAction(api.billing.createSubscriptionCheckout);
   const [open, setOpen] = useState(false);
   const [flow, setFlow] = useState<"signIn" | "signUp">("signUp");
   const [email, setEmail] = useState("");
@@ -39,14 +43,26 @@ export function AuthPanel() {
       {open && (
         <div className="account-popover">
           {isAuthenticated ? (
-            <button
-              onClick={() => {
-                window.localStorage.setItem("negotiator.accountMode", "true");
-                void signOut();
-              }}
-            >
-              Sign out
-            </button>
+            <div className="account-menu-actions">
+              {billing?.configured && (
+                <button
+                  onClick={async () => {
+                    const checkout = await createCheckout({});
+                    if (checkout.url) window.location.assign(checkout.url);
+                  }}
+                >
+                  Upgrade to Pro
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  window.localStorage.setItem("negotiator.accountMode", "true");
+                  void signOut();
+                }}
+              >
+                Sign out
+              </button>
+            </div>
           ) : (
             <form onSubmit={submit}>
               <strong>{flow === "signUp" ? "Create your account" : "Sign in"}</strong>

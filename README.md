@@ -40,11 +40,13 @@ npx convex env set AGENTMAIL_INBOX_ID your_inbox_id
 npx convex env set AGENTMAIL_WEBHOOK_SECRET your_webhook_secret
 npx convex env set STRIPE_SECRET_KEY sk_test_...
 npx convex env set STRIPE_WEBHOOK_SECRET whsec_...
+npx convex env set STRIPE_PRICE_ID price_...
+npx convex env set BILLING_REQUIRED true
 npx convex env set SITE_URL https://<deployment>.convex.site
 ```
 
 Register AgentMail's webhook as `https://<deployment>.convex.site/agentmail/webhook`.
-Register Stripe's webhook as `https://<deployment>.convex.site/stripe/webhook`, then add the subscription price ID to the checkout UI/configuration.
+Register Stripe's webhook as `https://<deployment>.convex.site/stripe/webhook`. The public app exposes an Upgrade to Pro action when `STRIPE_PRICE_ID` is configured. Keep `BILLING_REQUIRED` disabled until the test-mode checkout and webhook have been verified end to end.
 
 Without keys, the fictional demo remains usable while real integration calls return clear configuration errors.
 
