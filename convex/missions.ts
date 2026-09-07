@@ -2,7 +2,12 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { missionStatus, movingRequirements } from "./schema";
-import { assertTransition, requireMission, requireUser } from "./model";
+import {
+  assertTransition,
+  requireMission,
+  requirePersonalWorkspace,
+  requireReadableMission,
+} from "./model";
 
 export const listMine = query({
   args: {},
@@ -41,10 +46,12 @@ export const create = mutation({
   },
   returns: v.id("missions"),
   handler: async (ctx, args) => {
-    const ownerId = await requireUser(ctx);
+    const { user, workspace } = await requirePersonalWorkspace(ctx);
     const now = Date.now();
     const missionId = await ctx.db.insert("missions", {
-      ownerId,
+      ownerId: user._id,
+      createdBy: user._id,
+      workspaceId: workspace._id,
       isDemo: false,
       title: args.title,
       category: "moving",
@@ -57,6 +64,7 @@ export const create = mutation({
       updatedAt: now,
     });
     await ctx.db.insert("activityEvents", {
+      workspaceId: workspace._id,
       missionId,
       type: "mission_created",
       title: "Mission created",
@@ -108,7 +116,7 @@ export const dashboard = query({
   args: { missionId: v.id("missions") },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const mission = await requireMission(ctx, args.missionId);
+    const mission = await requireReadableMission(ctx, args.missionId);
     const links = await ctx.db
       .query("missionProviders")
       .withIndex("by_missionId", (q) => q.eq("missionId", args.missionId))
@@ -143,7 +151,13 @@ export const dashboard = query({
       )
       .order("desc")
       .take(50);
-    return { mission, providers, quotes: quoteRows, events };
+    const negotiationRuns = mission.isDemo
+      ? []
+      : await ctx.db
+          .query("negotiationRuns")
+          .withIndex("by_missionId", (q) => q.eq("missionId", mission._id))
+          .take(50);
+    return { mission, providers, quotes: quoteRows, events, negotiationRuns };
   },
 });
 

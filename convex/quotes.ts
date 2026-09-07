@@ -61,6 +61,7 @@ export const correct = mutation({
       manualEditNote: args.note.trim().slice(0, 500),
     });
     await ctx.db.insert("activityEvents", {
+      workspaceId: mission.workspaceId,
       missionId: quote.missionId,
       type: "quote_corrected",
       title: "Quote corrected",

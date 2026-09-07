@@ -86,7 +86,7 @@ export const startRun = internalMutation({
   args: { missionId: v.id("missions") },
   returns: v.id("agentRuns"),
   handler: async (ctx, { missionId }) => {
-    await requireMission(ctx, missionId);
+    const mission = await requireMission(ctx, missionId);
     const existing = await ctx.db
       .query("agentRuns")
       .withIndex("by_missionId", (q) => q.eq("missionId", missionId))
@@ -100,6 +100,7 @@ export const startRun = internalMutation({
     if (active) return active._id;
     const now = Date.now();
     const runId = await ctx.db.insert("agentRuns", {
+      workspaceId: mission.workspaceId,
       missionId,
       type: "provider_discovery",
       status: "running",
@@ -129,6 +130,7 @@ export const failRun = internalMutation({
       updatedAt: now,
     });
     await ctx.db.insert("activityEvents", {
+      workspaceId: run.workspaceId,
       missionId: run.missionId,
       type: "research_failed",
       title: "Provider research failed",
@@ -237,6 +239,7 @@ export const saveCandidates = internalMutation({
         });
     }
     await ctx.db.insert("activityEvents", {
+      workspaceId: run.workspaceId,
       missionId,
       type: "shortlist_ready",
       title: "Shortlist ready",

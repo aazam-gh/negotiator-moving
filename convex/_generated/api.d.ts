@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as accounts from "../accounts.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
 import type * as demo from "../demo.js";
@@ -15,9 +16,11 @@ import type * as http from "../http.js";
 import type * as inbound from "../inbound.js";
 import type * as missions from "../missions.js";
 import type * as model from "../model.js";
+import type * as negotiation from "../negotiation.js";
 import type * as outreach from "../outreach.js";
 import type * as quotes from "../quotes.js";
 import type * as research from "../research.js";
+import type * as workflows from "../workflows.js";
 
 import type {
   ApiFromModules,
@@ -26,6 +29,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  accounts: typeof accounts;
   auth: typeof auth;
   billing: typeof billing;
   demo: typeof demo;
@@ -33,9 +37,11 @@ declare const fullApi: ApiFromModules<{
   inbound: typeof inbound;
   missions: typeof missions;
   model: typeof model;
+  negotiation: typeof negotiation;
   outreach: typeof outreach;
   quotes: typeof quotes;
   research: typeof research;
+  workflows: typeof workflows;
 }>;
 
 /**
@@ -67,6 +73,8 @@ export declare const internal: FilterApi<
 export declare const components: {
   firecrawl: import("@firecrawl/firecrawl-convex/_generated/component.js").ComponentApi<"firecrawl">;
   agentmail: import("@agentmail/convex/_generated/component.js").ComponentApi<"agentmail">;
+  agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
   staticHosting: import("@convex-dev/static-hosting/_generated/component.js").ComponentApi<"staticHosting">;
   stripe: import("@convex-dev/stripe/_generated/component.js").ComponentApi<"stripe">;
 };

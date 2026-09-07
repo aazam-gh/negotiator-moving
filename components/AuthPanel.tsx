@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConvexAuth } from "convex/react";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 
 export function AuthPanel() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { signIn, signOut } = useAuthActions();
+  const account = useQuery(api.accounts.me, {});
+  const ensureAccount = useMutation(api.accounts.ensureAccount);
   const billing = useQuery(api.billing.config, {});
   const createCheckout = useAction(api.billing.createSubscriptionCheckout);
   const [open, setOpen] = useState(false);
@@ -16,9 +18,21 @@ export function AuthPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [notice, setNotice] = useState("");
+  const provisioningAttempted = useRef(false);
 
-  if (isLoading) return null;
-  if (isAuthenticated && !open)
+  const registered = account?.registered === true;
+
+  useEffect(() => {
+    if (!registered || account.workspaceId || provisioningAttempted.current) return;
+    provisioningAttempted.current = true;
+    void ensureAccount().catch((error) => {
+      provisioningAttempted.current = false;
+      setNotice(error instanceof Error ? error.message : "Account setup failed.");
+    });
+  }, [account, ensureAccount, registered]);
+
+  if (isLoading || account === undefined) return null;
+  if (registered && !open)
     return (
       <button className="account-button" onClick={() => setOpen(true)}>
         Account
@@ -29,8 +43,10 @@ export function AuthPanel() {
     event.preventDefault();
     setNotice("");
     try {
+      window.localStorage.setItem("negotiator.accountMode", "true");
+      if (isAuthenticated && !registered) await signOut();
       await signIn("password", { email, password, flow });
-      setOpen(false);
+      setOpen(true);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Authentication failed.");
     }
@@ -38,12 +54,23 @@ export function AuthPanel() {
 
   return (
     <div className="account-panel">
-      {!isAuthenticated && <button onClick={() => setOpen(!open)}>Sign in</button>}
-      {isAuthenticated && <button onClick={() => setOpen(!open)}>Account</button>}
+      {!registered && <button onClick={() => setOpen(!open)}>Sign in</button>}
+      {registered && <button onClick={() => setOpen(!open)}>Account</button>}
       {open && (
         <div className="account-popover">
-          {isAuthenticated ? (
+          {registered ? (
             <div className="account-menu-actions">
+              <strong>Your private inbox</strong>
+              <small>
+                {account.mailbox?.status === "ready"
+                  ? account.mailbox.address
+                  : account.mailbox?.status === "failed"
+                    ? "Inbox setup needs a retry"
+                    : "Provisioning securely…"}
+              </small>
+              {account.mailbox?.status === "failed" && (
+                <button onClick={() => void ensureAccount()}>Retry inbox setup</button>
+              )}
               {billing?.configured && (
                 <button
                   onClick={async () => {
@@ -57,6 +84,7 @@ export function AuthPanel() {
               <button
                 onClick={() => {
                   window.localStorage.setItem("negotiator.accountMode", "true");
+                  provisioningAttempted.current = false;
                   void signOut();
                 }}
               >

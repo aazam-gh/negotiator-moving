@@ -167,6 +167,7 @@ type QuoteCard = {
   inclusions: string[];
   exclusions: string[];
   originalReply: string;
+  negotiationStatus?: string;
 };
 
 export function NegotiatorApp() {
@@ -468,6 +469,9 @@ function MissionWorkspace({
       inclusions: row.quote.inclusions,
       exclusions: row.quote.exclusions,
       originalReply: row.message?.bodyText ?? "Original reply unavailable",
+      negotiationStatus: dashboard.negotiationRuns?.find(
+        (run: { providerId: string }) => run.providerId === row.quote.providerId,
+      )?.status,
     })) ?? demoQuotes;
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(demo ? demoProviders.map((p) => p.id) : []),
@@ -830,6 +834,7 @@ function QuoteRow({
   demo: boolean;
 }) {
   const correctQuote = useMutation(api.quotes.correct);
+  const acceptQuote = useMutation(api.negotiation.acceptQuote);
   const [total, setTotal] = useState(quote.total?.toString() ?? "");
   const [availability, setAvailability] = useState(quote.availability);
   const [packing, setPacking] = useState<TriState>(toTriState(quote.packing));
@@ -867,6 +872,15 @@ function QuoteRow({
       setSaved(
         error instanceof Error ? error.message : "Could not save correction",
       );
+    }
+  }
+  async function accept() {
+    setSaved("");
+    try {
+      await acceptQuote({ quoteId: quote.id as Id<"quotes"> });
+      setSaved("Quote selected. No booking or payment was made.");
+    } catch (error) {
+      setSaved(error instanceof Error ? error.message : "Could not select quote");
     }
   }
   return (
@@ -978,6 +992,14 @@ function QuoteRow({
                 ? quote.missingFields.join(", ")
                 : "none"}
             </p>
+            {quote.negotiationStatus && (
+              <p className="missing-summary">
+                Negotiation: {humanize(quote.negotiationStatus)}
+              </p>
+            )}
+            {quote.negotiationStatus === "ready_for_user" && !demo && (
+              <Button onClick={accept}>Select this satisfactory quote</Button>
+            )}
           </td>
         </tr>
       )}

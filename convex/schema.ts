@@ -48,10 +48,63 @@ export const movingRequirements = v.object({
   notes: v.optional(v.string()),
 });
 
+export const mailboxStatus = v.union(
+  v.literal("pending"),
+  v.literal("ready"),
+  v.literal("failed"),
+);
+
+export const negotiationRunStatus = v.union(
+  v.literal("starting"),
+  v.literal("awaiting_reply"),
+  v.literal("evaluating"),
+  v.literal("countering"),
+  v.literal("ready_for_user"),
+  v.literal("needs_review"),
+  v.literal("exhausted"),
+  v.literal("completed"),
+  v.literal("failed"),
+);
+
 export default defineSchema({
   ...authTables,
+  workspaces: defineTable({
+    ownerId: v.id("users"),
+    name: v.string(),
+    kind: v.literal("personal"),
+    status: v.union(v.literal("active"), v.literal("suspended")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_ownerId", ["ownerId"]),
+  workspaceMembers: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.id("users"),
+    role: v.union(v.literal("owner"), v.literal("member")),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_workspaceId_and_userId", ["workspaceId", "userId"]),
+  mailboxes: defineTable({
+    workspaceId: v.id("workspaces"),
+    ownerId: v.id("users"),
+    provider: v.literal("agentmail"),
+    status: mailboxStatus,
+    inboxId: v.optional(v.string()),
+    address: v.optional(v.string()),
+    provisioningKey: v.string(),
+    provisioningWorkflowId: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_ownerId", ["ownerId"])
+    .index("by_inboxId", ["inboxId"])
+    .index("by_provisioningKey", ["provisioningKey"]),
   missions: defineTable({
     ownerId: v.optional(v.id("users")),
+    workspaceId: v.optional(v.id("workspaces")),
+    createdBy: v.optional(v.id("users")),
     demoKey: v.optional(v.string()),
     isDemo: v.boolean(),
     title: v.string(),
@@ -110,9 +163,12 @@ export default defineSchema({
     .index("by_missionId", ["missionId"])
     .index("by_providerId", ["providerId"]),
   outreachThreads: defineTable({
+    workspaceId: v.optional(v.id("workspaces")),
     missionId: v.id("missions"),
     providerId: v.id("providers"),
+    mailboxId: v.optional(v.id("mailboxes")),
     inboxId: v.string(),
+    agentThreadId: v.optional(v.string()),
     outboundId: v.optional(v.string()),
     agentMailThreadId: v.optional(v.string()),
     status: v.union(
@@ -130,9 +186,11 @@ export default defineSchema({
     .index("by_agentMailThreadId", ["agentMailThreadId"])
     .index("by_missionId_and_providerId", ["missionId", "providerId"]),
   messages: defineTable({
+    workspaceId: v.optional(v.id("workspaces")),
     missionId: v.id("missions"),
     providerId: v.id("providers"),
     threadId: v.id("outreachThreads"),
+    negotiationRunId: v.optional(v.id("negotiationRuns")),
     direction: v.union(v.literal("outbound"), v.literal("inbound")),
     subject: v.string(),
     bodyText: v.string(),
@@ -153,9 +211,11 @@ export default defineSchema({
     .index("by_threadId", ["threadId"])
     .index("by_externalMessageId", ["externalMessageId"]),
   quotes: defineTable({
+    workspaceId: v.optional(v.id("workspaces")),
     missionId: v.id("missions"),
     providerId: v.id("providers"),
     sourceMessageId: v.id("messages"),
+    round: v.optional(v.number()),
     currency: v.string(),
     subtotal: v.optional(v.number()),
     tax: v.optional(v.number()),
@@ -177,6 +237,7 @@ export default defineSchema({
     .index("by_missionId", ["missionId"])
     .index("by_sourceMessageId", ["sourceMessageId"]),
   activityEvents: defineTable({
+    workspaceId: v.optional(v.id("workspaces")),
     missionId: v.id("missions"),
     type: v.string(),
     title: v.string(),
@@ -185,6 +246,7 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_missionId_and_createdAt", ["missionId", "createdAt"]),
   agentRuns: defineTable({
+    workspaceId: v.optional(v.id("workspaces")),
     missionId: v.id("missions"),
     type: v.union(
       v.literal("request_parse"),
@@ -207,13 +269,63 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   }).index("by_missionId", ["missionId"]),
   approvals: defineTable({
+    workspaceId: v.optional(v.id("workspaces")),
     missionId: v.id("missions"),
     ownerId: v.id("users"),
-    type: v.literal("provider_outreach"),
+    type: v.union(
+      v.literal("provider_outreach"),
+      v.literal("negotiation_mandate"),
+    ),
     providerIds: v.array(v.id("providers")),
     approvedAt: v.number(),
     idempotencyKey: v.string(),
   })
     .index("by_missionId", ["missionId"])
-    .index("by_idempotencyKey", ["idempotencyKey"]),
+    .index("by_idempotencyKey", ["idempotencyKey"])
+    .index("by_workspaceId_and_idempotencyKey", [
+      "workspaceId",
+      "idempotencyKey",
+    ]),
+  negotiationPolicies: defineTable({
+    workspaceId: v.id("workspaces"),
+    missionId: v.id("missions"),
+    ownerId: v.id("users"),
+    targetTotal: v.optional(v.number()),
+    maxBudget: v.optional(v.number()),
+    maxRounds: v.number(),
+    maxMessagesPerProvider: v.number(),
+    followupHours: v.number(),
+    satisfactionThreshold: v.number(),
+    status: v.union(v.literal("approved"), v.literal("revoked")),
+    approvedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_missionId", ["missionId"]),
+  negotiationRuns: defineTable({
+    workspaceId: v.id("workspaces"),
+    missionId: v.id("missions"),
+    providerId: v.id("providers"),
+    outreachThreadId: v.id("outreachThreads"),
+    policyId: v.id("negotiationPolicies"),
+    agentThreadId: v.string(),
+    workflowId: v.optional(v.string()),
+    status: negotiationRunStatus,
+    round: v.number(),
+    forcedFailuresRemaining: v.number(),
+    lastDecision: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_missionId", ["missionId"])
+    .index("by_outreachThreadId", ["outreachThreadId"])
+    .index("by_workspaceId", ["workspaceId"]),
+  webhookQuarantine: defineTable({
+    inboxId: v.optional(v.string()),
+    eventId: v.string(),
+    reason: v.string(),
+    missionLabel: v.optional(v.string()),
+    providerLabel: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_eventId", ["eventId"]),
 });
