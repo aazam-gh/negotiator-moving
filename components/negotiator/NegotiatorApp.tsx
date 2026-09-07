@@ -169,6 +169,14 @@ type QuoteCard = {
   originalReply: string;
   negotiationStatus?: string;
 };
+type MandateDraft = {
+  targetTotal: string;
+  maxBudget: string;
+  maxRounds: string;
+  maxMessagesPerProvider: string;
+  followupHours: string;
+  satisfactionThreshold: string;
+};
 
 export function NegotiatorApp() {
   const [view, setView] = useState<View>("landing");
@@ -508,14 +516,22 @@ function MissionWorkspace({
   );
   if (!dashboard)
     return <main className="mission-loading">Loading live mission…</main>;
-  async function contactSelected() {
+  async function contactSelected(mandate: MandateDraft) {
     setWorkspaceNotice("");
     try {
       const providerIds = [...selected] as Id<"providers">[];
+      const numberOrUndefined = (value: string) =>
+        value.trim() === "" ? undefined : Number(value);
       await approveOutreach({
         missionId,
         providerIds,
         idempotencyKey: crypto.randomUUID(),
+        targetTotal: numberOrUndefined(mandate.targetTotal),
+        maxBudget: numberOrUndefined(mandate.maxBudget),
+        maxRounds: numberOrUndefined(mandate.maxRounds),
+        maxMessagesPerProvider: numberOrUndefined(mandate.maxMessagesPerProvider),
+        followupHours: numberOrUndefined(mandate.followupHours),
+        satisfactionThreshold: numberOrUndefined(mandate.satisfactionThreshold),
       });
     } catch (error) {
       setWorkspaceNotice(
@@ -609,6 +625,16 @@ function MissionWorkspace({
             setSelected={setSelected}
             approved={approved}
             onApprove={contactSelected}
+            defaultMandate={{
+              targetTotal: dashboard.mission.requirements.budget?.toString() ?? "",
+              maxBudget: dashboard.mission.requirements.budget?.toString() ?? "",
+              maxRounds: dashboard.policy?.maxRounds?.toString() ?? "4",
+              maxMessagesPerProvider:
+                dashboard.policy?.maxMessagesPerProvider?.toString() ?? "5",
+              followupHours: dashboard.policy?.followupHours?.toString() ?? "24",
+              satisfactionThreshold:
+                dashboard.policy?.satisfactionThreshold?.toString() ?? "0.8",
+            }}
           />
         )}
         {tab === "quotes" && <Quotes quotes={quotes} demo={demo} />}
@@ -672,13 +698,18 @@ function Providers({
   setSelected,
   approved,
   onApprove,
+  defaultMandate,
 }: {
   providers: ProviderCard[];
   selected: Set<string>;
   setSelected: (value: Set<string>) => void;
   approved: boolean;
-  onApprove: () => Promise<void>;
+  onApprove: (mandate: MandateDraft) => Promise<void>;
+  defaultMandate: MandateDraft;
 }) {
+  const [mandate, setMandate] = useState(defaultMandate);
+  const updateMandate = (key: keyof MandateDraft, value: string) =>
+    setMandate((current) => ({ ...current, [key]: value }));
   function toggle(id: string) {
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
@@ -692,6 +723,67 @@ function Providers({
         description="Research-backed matches. Open a source before approving outreach."
         meta={`${selected.size} selected`}
       />
+      {!approved && (
+        <div className="mandate-panel panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Negotiation mandate</h2>
+              <p>Set the limits Negotiator must follow after your one approval.</p>
+            </div>
+            <span className="live-chip">Your rules</span>
+          </div>
+          <div className="mandate-grid">
+            <MandateInput
+              label="Target total (QAR)"
+              value={mandate.targetTotal}
+              onChange={(value) => updateMandate("targetTotal", value)}
+              placeholder="Optional"
+              min="0"
+              max="10000000"
+            />
+            <MandateInput
+              label="Maximum budget (QAR)"
+              value={mandate.maxBudget}
+              onChange={(value) => updateMandate("maxBudget", value)}
+              placeholder="Optional"
+              min="0"
+              max="10000000"
+            />
+            <MandateInput
+              label="Max rounds"
+              value={mandate.maxRounds}
+              onChange={(value) => updateMandate("maxRounds", value)}
+              min="1"
+              max="8"
+            />
+            <MandateInput
+              label="Max messages / provider"
+              value={mandate.maxMessagesPerProvider}
+              onChange={(value) => updateMandate("maxMessagesPerProvider", value)}
+              min="1"
+              max="10"
+            />
+            <MandateInput
+              label="Follow up after (hours)"
+              value={mandate.followupHours}
+              onChange={(value) => updateMandate("followupHours", value)}
+              min="1"
+              max="168"
+            />
+            <MandateInput
+              label="Satisfaction threshold"
+              value={mandate.satisfactionThreshold}
+              onChange={(value) => updateMandate("satisfactionThreshold", value)}
+              min="0.5"
+              max="1"
+              step="0.1"
+            />
+          </div>
+          <small className="mandate-help">
+            The workflow stops at these limits, never books, and never pays. Blank budgets mean the quote must still be complete and available.
+          </small>
+        </div>
+      )}
       <div className="provider-list">
         {providers.map((provider) => (
           <article
@@ -758,12 +850,45 @@ function Providers({
               <span>No email is sent until you confirm.</span>
             </p>
           </div>
-          <Button onClick={onApprove} disabled={!selected.size}>
+          <Button onClick={() => void onApprove(mandate)} disabled={!selected.size}>
             Contact {selected.size} selected providers
           </Button>
         </div>
       )}
     </section>
+  );
+}
+
+function MandateInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  min,
+  max,
+  step = "1",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  min?: string;
+  max?: string;
+  step?: string;
+}) {
+  return (
+    <label className="mandate-field">
+      <span>{label}</span>
+      <Input
+        type="number"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        min={min}
+        max={max}
+        step={step}
+      />
+    </label>
   );
 }
 

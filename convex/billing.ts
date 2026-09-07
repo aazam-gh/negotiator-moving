@@ -40,7 +40,7 @@ export const config = query({
   handler: async () => ({ configured: Boolean(process.env.STRIPE_PRICE_ID) }),
 });
 
-export const isSubscribed = query({
+export const isSubscribed = action({
   args: {},
   returns: v.boolean(),
   handler: async (ctx) => {

@@ -133,6 +133,21 @@ describe("workspace isolation", () => {
         note: "attempted cross-tenant edit",
       }),
     ).rejects.toThrow("Mission not found");
+    await expect(
+      bob.mutation(api.negotiation.acceptQuote, { quoteId: fixture.quoteId }),
+    ).rejects.toThrow("Mission not found");
+    await expect(
+      t.mutation(api.missions.create, {
+        rawRequest: "Unauthenticated attempt",
+        title: "Should fail",
+        requirements: {
+          origin: "Doha",
+          destination: "Lusail",
+          requestedDate: "Tomorrow",
+          propertySize: "Apartment",
+        },
+      }),
+    ).rejects.toThrow("Authentication required");
   });
 });
 

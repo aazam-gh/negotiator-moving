@@ -157,7 +157,20 @@ export const dashboard = query({
           .query("negotiationRuns")
           .withIndex("by_missionId", (q) => q.eq("missionId", mission._id))
           .take(50);
-    return { mission, providers, quotes: quoteRows, events, negotiationRuns };
+    const policy = mission.isDemo
+      ? null
+      : await ctx.db
+          .query("negotiationPolicies")
+          .withIndex("by_missionId", (q) => q.eq("missionId", mission._id))
+          .unique();
+    return {
+      mission,
+      providers,
+      quotes: quoteRows,
+      events,
+      negotiationRuns,
+      policy,
+    };
   },
 });
 

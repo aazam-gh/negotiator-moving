@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireMission, requireRegisteredUser } from "./model";
 import { formatMovingRfq } from "../lib/negotiator-rules";
+import { normalizeNegotiationPolicy } from "../lib/negotiation-policy";
 import { workflows } from "./workflows";
 
 const agentmail = new AgentMail(components.agentmail);
@@ -14,12 +15,21 @@ export const approveAndSend = mutation({
     missionId: v.id("missions"),
     providerIds: v.array(v.id("providers")),
     idempotencyKey: v.string(),
+    targetTotal: v.optional(v.number()),
+    maxBudget: v.optional(v.number()),
+    maxRounds: v.optional(v.number()),
+    maxMessagesPerProvider: v.optional(v.number()),
+    followupHours: v.optional(v.number()),
+    satisfactionThreshold: v.optional(v.number()),
   },
   returns: v.object({ sent: v.number() }),
   handler: async (ctx, args) => {
     const user = await requireRegisteredUser(ctx);
     const mission = await requireMission(ctx, args.missionId);
     if (!mission.workspaceId) throw new Error("Mission workspace is missing");
+    const policy = normalizeNegotiationPolicy(args, mission.requirements.budget);
+    if (!args.idempotencyKey.trim() || args.idempotencyKey.length > 128)
+      throw new Error("A valid idempotency key is required");
     const prior = await ctx.db
       .query("approvals")
       .withIndex("by_workspaceId_and_idempotencyKey", (q) =>
@@ -31,6 +41,8 @@ export const approveAndSend = mutation({
     if (prior) return { sent: 0 };
     if (!args.providerIds.length)
       throw new Error("Select at least one provider");
+    if (args.providerIds.length > 10)
+      throw new Error("Select no more than 10 providers at once");
     const providerIds = [...new Set(args.providerIds)];
     if (providerIds.length !== args.providerIds.length)
       throw new Error("A provider can only be selected once");
@@ -91,12 +103,7 @@ export const approveAndSend = mutation({
         workspaceId: mission.workspaceId,
         missionId: mission._id,
         ownerId: user._id,
-        targetTotal: mission.requirements.budget,
-        maxBudget: mission.requirements.budget,
-        maxRounds: 4,
-        maxMessagesPerProvider: 5,
-        followupHours: 24,
-        satisfactionThreshold: 0.8,
+        ...policy,
         status: "approved",
         approvedAt: Date.now(),
         updatedAt: Date.now(),
@@ -149,6 +156,7 @@ export const approveAndSend = mutation({
         agentThreadId,
         status: "starting",
         round: 0,
+        followupsSent: 0,
         forcedFailuresRemaining: 0,
         createdAt: Date.now(),
         updatedAt: Date.now(),

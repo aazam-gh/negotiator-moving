@@ -261,7 +261,7 @@ export const onMessageReceived = internalMutation({
       await sendEvent(ctx, components.workflow, {
         ...providerReplyEvent,
         workflowId: run.workflowId as WorkflowId,
-        value: { messageId },
+        value: { kind: "reply", messageId },
       });
     }
     return null;

@@ -310,6 +310,8 @@ export default defineSchema({
     workflowId: v.optional(v.string()),
     status: negotiationRunStatus,
     round: v.number(),
+    followupsSent: v.optional(v.number()),
+    nextFollowupAt: v.optional(v.number()),
     forcedFailuresRemaining: v.number(),
     lastDecision: v.optional(v.string()),
     lastError: v.optional(v.string()),

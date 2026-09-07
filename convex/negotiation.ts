@@ -1,6 +1,7 @@
 import { saveMessage } from "@convex-dev/agent";
 import {
   defineEvent,
+  sendEvent,
   type WorkflowId,
   vResultValidator,
   vWorkflowId,
@@ -22,7 +23,10 @@ const agentmail = new AgentMail(components.agentmail);
 
 export const providerReplyEvent = defineEvent({
   name: "providerReply",
-  validator: v.object({ messageId: v.id("messages") }),
+  validator: v.union(
+    v.object({ kind: v.literal("reply"), messageId: v.id("messages") }),
+    v.object({ kind: v.literal("timeout") }),
+  ),
 });
 
 const decisionValidator = v.object({
@@ -48,17 +52,29 @@ export const providerNegotiationWorkflow = workflows
     let lastOutcome: "countered" | "ready_for_user" | "needs_review" | "exhausted" =
       "exhausted";
     for (let round = 1; round <= limit; round++) {
-      const { messageId } = await step.awaitEvent(providerReplyEvent);
-      const decision = await step.runAction(
-        internal.negotiation.evaluateReplyAction,
-        { runId, messageId },
-        {
-          retry: { maxAttempts: 3, initialBackoffMs: 250, base: 2 },
-          name: `Evaluate provider reply ${round}`,
-        },
-      );
-      lastOutcome = decision.outcome;
-      if (decision.outcome !== "countered") return decision;
+      while (true) {
+        const signal = await step.awaitEvent(providerReplyEvent);
+        if (signal.kind === "timeout") {
+          const followup = await step.runMutation(
+            internal.negotiation.sendFollowup,
+            { runId },
+            { name: `Send durable follow-up ${round}` },
+          );
+          if (followup === "exhausted") return { outcome: "exhausted" };
+          continue;
+        }
+        const decision = await step.runAction(
+          internal.negotiation.evaluateReplyAction,
+          { runId, messageId: signal.messageId },
+          {
+            retry: { maxAttempts: 3, initialBackoffMs: 250, base: 2 },
+            name: `Evaluate provider reply ${round}`,
+          },
+        );
+        lastOutcome = decision.outcome;
+        if (decision.outcome !== "countered") return decision;
+        break;
+      }
     }
     await step.runMutation(
       internal.negotiation.markExhausted,
@@ -79,9 +95,123 @@ export const markAwaitingReply = internalMutation({
       throw new Error("Negotiation mandate is not active");
     await ctx.db.patch("negotiationRuns", runId, {
       status: "awaiting_reply",
+      nextFollowupAt: Date.now() + policy.followupHours * 60 * 60 * 1000,
       updatedAt: Date.now(),
     });
+    await scheduleReplyWake(
+      ctx,
+      runId,
+      run.workflowId,
+      run.round,
+      policy.followupHours,
+    );
     return policy.maxRounds;
+  },
+});
+
+export const wakeForReply = internalMutation({
+  args: {
+    runId: v.id("negotiationRuns"),
+    workflowId: v.string(),
+    expectedRound: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get("negotiationRuns", args.runId);
+    if (
+      !run ||
+      run.workflowId !== args.workflowId ||
+      run.round !== args.expectedRound ||
+      run.status !== "awaiting_reply"
+    )
+      return null;
+    await ctx.db.patch("negotiationRuns", run._id, {
+      nextFollowupAt: undefined,
+      updatedAt: Date.now(),
+    });
+    try {
+      await sendEvent(ctx, components.workflow, {
+        ...providerReplyEvent,
+        workflowId: args.workflowId as WorkflowId,
+        value: { kind: "timeout" as const },
+      });
+    } catch (error) {
+      if (!String(error).toLowerCase().includes("already")) throw error;
+    }
+    return null;
+  },
+});
+
+export const sendFollowup = internalMutation({
+  args: { runId: v.id("negotiationRuns") },
+  returns: v.union(v.literal("followed_up"), v.literal("exhausted")),
+  handler: async (ctx, { runId }) => {
+    const run = await ctx.db.get("negotiationRuns", runId);
+    if (!run || run.status !== "awaiting_reply") return "exhausted" as const;
+    const policy = await ctx.db.get("negotiationPolicies", run.policyId);
+    const thread = await ctx.db.get("outreachThreads", run.outreachThreadId);
+    if (!policy || !thread || thread.workspaceId !== run.workspaceId)
+      throw new Error("Negotiation follow-up tenancy mismatch");
+    const followupsSent = run.followupsSent ?? 0;
+    if (followupsSent >= Math.max(0, policy.maxMessagesPerProvider - 1)) {
+      await setRunDecision(
+        ctx,
+        runId,
+        "exhausted",
+        run.round,
+        "Provider did not reply before the approved message limit.",
+      );
+      return "exhausted" as const;
+    }
+    const latestMessage = await ctx.db
+      .query("messages")
+      .withIndex("by_threadId", (q) => q.eq("threadId", thread._id))
+      .order("desc")
+      .first();
+    if (!latestMessage) throw new Error("Cannot follow up without a message thread");
+    const text =
+      "Just following up on our quote request. Could you please share your best all-inclusive total and confirm availability? No booking is being made at this stage.";
+    const externalMessageId = await agentmail.replyToMessage(
+      ctx,
+      thread.inboxId,
+      latestMessage.externalMessageId,
+      { text },
+    );
+    const now = Date.now();
+    await ctx.db.insert("messages", {
+      workspaceId: run.workspaceId,
+      missionId: run.missionId,
+      providerId: run.providerId,
+      threadId: thread._id,
+      negotiationRunId: runId,
+      direction: "outbound",
+      subject: `Re: ${thread.subject}`,
+      bodyText: text,
+      externalMessageId,
+      classification: "other",
+      occurredAt: now,
+    });
+    await saveMessage(ctx, components.agent, {
+      threadId: run.agentThreadId,
+      userId: String(run.workspaceId),
+      agentName: "Negotiator",
+      message: { role: "assistant", content: text },
+    });
+    await ctx.db.patch("negotiationRuns", runId, {
+      followupsSent: followupsSent + 1,
+      nextFollowupAt: now + policy.followupHours * 60 * 60 * 1000,
+      lastDecision:
+        "No reply arrived before the follow-up window; a reminder was sent.",
+      updatedAt: now,
+    });
+    await scheduleReplyWake(
+      ctx,
+      runId,
+      run.workflowId,
+      run.round,
+      policy.followupHours,
+    );
+    return "followed_up" as const;
   },
 });
 
@@ -157,10 +287,19 @@ export const evaluateAndRespond = internalMutation({
     const withinBudget =
       quote?.total !== undefined &&
       (policy.maxBudget === undefined || quote.total <= policy.maxBudget);
+    const confidenceSatisfied =
+      quote !== null && quote !== undefined &&
+      quote.confidence >= policy.satisfactionThreshold;
     const available = quote
       ? !/not available|unavailable/i.test(quote.availability)
       : false;
-    if (quote && withinBudget && available && requiredMissing.length === 0) {
+    if (
+      quote &&
+      withinBudget &&
+      available &&
+      confidenceSatisfied &&
+      requiredMissing.length === 0
+    ) {
       await setRunDecision(
         ctx,
         runId,
@@ -232,6 +371,13 @@ export const evaluateAndRespond = internalMutation({
       target
         ? `Countered toward ${quote?.currency ?? "QAR"} ${target}.`
         : "Requested the missing quote details.",
+    );
+    await scheduleReplyWake(
+      ctx,
+      runId,
+      run.workflowId,
+      nextRound,
+      policy.followupHours,
     );
     await ctx.db.insert("activityEvents", {
       workspaceId: run.workspaceId,
@@ -354,6 +500,21 @@ async function setRunDecision(
     lastError: undefined,
     updatedAt: Date.now(),
   });
+}
+
+async function scheduleReplyWake(
+  ctx: MutationCtx,
+  runId: Id<"negotiationRuns">,
+  workflowId: string | undefined,
+  expectedRound: number,
+  followupHours: number,
+) {
+  if (!workflowId) throw new Error("Negotiation workflow is not attached");
+  await ctx.scheduler.runAfter(
+    followupHours * 60 * 60 * 1000,
+    internal.negotiation.wakeForReply,
+    { runId, workflowId, expectedRound },
+  );
 }
 
 function composeCounterRequest(args: {

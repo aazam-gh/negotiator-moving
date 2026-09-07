@@ -65,7 +65,7 @@ export function AuthPanel() {
                 {account.mailbox?.status === "ready"
                   ? account.mailbox.address
                   : account.mailbox?.status === "failed"
-                    ? "Inbox setup needs a retry"
+                    ? account.mailbox.lastError ?? "Inbox setup needs a retry"
                     : "Provisioning securely…"}
               </small>
               {account.mailbox?.status === "failed" && (

@@ -818,6 +818,36 @@ textarea:focus-visible {
   border-radius: 12px;
   overflow: hidden;
 }
+.mandate-panel {
+  margin: 18px 22px 4px;
+  overflow: hidden;
+}
+.mandate-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 22px 8px;
+}
+.mandate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.mandate-field input {
+  background: #fff;
+  border-color: #c6d0dc;
+  font-weight: 500;
+}
+.mandate-help {
+  display: block;
+  padding: 4px 22px 18px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .section-heading > span {
   color: var(--blue);
   background: var(--blue-soft);
@@ -1181,6 +1211,9 @@ textarea:focus-visible {
   }
   .provider-evidence {
     grid-template-columns: 1fr;
+  }
+  .mandate-grid {
+    grid-template-columns: 1fr 1fr;
   }
   .approval-bar {
     align-items: stretch;

@@ -154,6 +154,14 @@ export const provisionMailboxWorkflow = workflows
         name: "Create isolated AgentMail inbox",
       },
     );
+    if (created.status === "failed") {
+      await step.runMutation(
+        internal.accounts.markMailboxProvisioningFailed,
+        { mailboxId, error: created.error },
+        { inline: true, name: "Record mailbox capacity limit" },
+      );
+      return null;
+    }
     await step.runMutation(
       internal.accounts.markMailboxReady,
       { mailboxId, inboxId: created.inboxId, address: created.address },
@@ -164,7 +172,14 @@ export const provisionMailboxWorkflow = workflows
 
 export const createRemoteInbox = internalAction({
   args: { mailboxId: v.id("mailboxes") },
-  returns: v.object({ inboxId: v.string(), address: v.string() }),
+  returns: v.union(
+    v.object({
+      status: v.literal("ready"),
+      inboxId: v.string(),
+      address: v.string(),
+    }),
+    v.object({ status: v.literal("failed"), error: v.string() }),
+  ),
   handler: async (ctx, { mailboxId }) => {
     const state = await ctx.runQuery(internal.accounts.loadMailboxForProvisioning, {
       mailboxId,
@@ -186,6 +201,13 @@ export const createRemoteInbox = internalAction({
     );
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 500);
+      if (response.status === 403 && detail.includes("limit_exceeded")) {
+        return {
+          status: "failed" as const,
+          error:
+            "AgentMail inbox capacity has been reached. Increase the AgentMail inbox limit, then retry setup.",
+        };
+      }
       throw new Error(`AgentMail inbox creation failed (${response.status}): ${detail}`);
     }
     const remote = (await response.json()) as {
@@ -197,7 +219,23 @@ export const createRemoteInbox = internalAction({
     const inboxId = String(remote?.inbox_id ?? remote?.inboxId ?? "");
     const address = String(remote?.email ?? remote?.address ?? "");
     if (!inboxId || !address) throw new Error("AgentMail returned an invalid inbox");
-    return { inboxId, address };
+    return { status: "ready" as const, inboxId, address };
+  },
+});
+
+export const markMailboxProvisioningFailed = internalMutation({
+  args: { mailboxId: v.id("mailboxes"), error: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const mailbox = await ctx.db.get("mailboxes", args.mailboxId);
+    if (!mailbox) return null;
+    await ctx.db.patch("mailboxes", mailbox._id, {
+      status: "failed",
+      provisioningWorkflowId: undefined,
+      lastError: args.error.slice(0, 500),
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });
 

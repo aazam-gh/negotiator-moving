@@ -6,8 +6,33 @@ import {
   qualifyProvider,
   quoteLabels,
 } from "./negotiator-rules";
+import { normalizeNegotiationPolicy } from "./negotiation-policy";
 
 describe("deterministic Negotiator rules", () => {
+  it("normalizes a bounded negotiation mandate", () => {
+    expect(
+      normalizeNegotiationPolicy(
+        { targetTotal: 900, maxBudget: 1000, maxRounds: 3, followupHours: 12 },
+        1200,
+      ),
+    ).toMatchObject({
+      targetTotal: 900,
+      maxBudget: 1000,
+      maxRounds: 3,
+      maxMessagesPerProvider: 5,
+      followupHours: 12,
+      satisfactionThreshold: 0.8,
+    });
+  });
+  it.each([
+    [{ maxRounds: 0 }, "Maximum rounds"],
+    [{ maxMessagesPerProvider: 11 }, "Maximum messages"],
+    [{ followupHours: 0 }, "Follow-up window"],
+    [{ satisfactionThreshold: 0.4 }, "Satisfaction threshold"],
+    [{ targetTotal: 1200, maxBudget: 1000 }, "Target total cannot"],
+  ] as const)("rejects invalid mandate %j", (input, message) => {
+    expect(() => normalizeNegotiationPolicy(input)).toThrow(message);
+  });
   it("extracts only obvious moving requirements", () => {
     expect(
       parseMovingRequest(
