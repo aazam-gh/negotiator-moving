@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -16,6 +16,8 @@ import {
   ExternalLink,
   Inbox,
   Mail,
+  Mic,
+  MicOff,
   MapPin,
   SlidersHorizontal,
   Search,
@@ -37,6 +39,27 @@ import {
 type View = "landing" | "requirements" | "mission";
 const initialRequest =
   "I need movers in Doha next Saturday for a 2-bedroom apartment from West Bay to Lusail. I need furniture disassembly and reassembly but no packing.";
+
+type SpeechRecognitionResultEventLike = Event & {
+  results: {
+    length: number;
+    [index: number]: {
+      isFinal: boolean;
+      [index: number]: { transcript: string };
+    };
+  };
+};
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: SpeechRecognitionResultEventLike) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const demoProviders = [
   {
@@ -282,6 +305,65 @@ function Landing({
   onStart: () => void;
   onDemo: () => void;
 }) {
+  const [isListening, setIsListening] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  useEffect(() => () => recognitionRef.current?.stop(), []);
+
+  function toggleVoiceInput() {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const browserWindow = window as typeof window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    const Recognition =
+      browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
+    if (!Recognition) {
+      setVoiceStatus("Voice input is not supported in this browser.");
+      return;
+    }
+    const recognition = new Recognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+      const transcript = Array.from({ length: event.results.length })
+        .map((_, index) => event.results[index])
+        .filter((result) => result.isFinal)
+        .map((result) => result[0]?.transcript.trim())
+        .filter(Boolean)
+        .join(" ");
+      if (transcript) {
+        setRequest(`${request.trim()} ${transcript}`.trim());
+        setVoiceStatus("Added to your request. You can edit it before starting.");
+      }
+    };
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      setVoiceStatus(
+        event.error === "not-allowed"
+          ? "Microphone access is blocked. Allow it in your browser settings."
+          : "We could not hear that. Try again or type your request.",
+      );
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsListening(true);
+      setVoiceStatus("Listening… speak naturally, then pause.");
+    } catch {
+      setVoiceStatus("Voice input could not start. Try again or type your request.");
+    }
+  }
+
   return (
     <main className="landing">
       <nav className="landing-nav">
@@ -334,6 +416,24 @@ function Landing({
             rows={5}
             placeholder="I need movers in Doha next Saturday for a 2-bedroom apartment."
           />
+          <div className="composer-tools">
+            <div className={`voice-status ${isListening ? "is-listening" : ""}`}>
+              {isListening ? <MicOff size={15} /> : <Mic size={15} />}
+              <span>
+                <strong>{isListening ? "Listening…" : "Prefer to speak?"}</strong>
+                <small>{voiceStatus || "Your words will be added here for review."}</small>
+              </span>
+            </div>
+            <button
+              type="button"
+              className={`voice-button ${isListening ? "is-listening" : ""}`}
+              onClick={toggleVoiceInput}
+              aria-pressed={isListening}
+            >
+              {isListening ? <MicOff size={15} /> : <Mic size={15} />}
+              {isListening ? "Stop listening" : "Use microphone"}
+            </button>
+          </div>
           <div className="composer-footer">
             <span>Start with moving services. More categories are coming.</span>
             <Button onClick={onStart} disabled={!request.trim()}>

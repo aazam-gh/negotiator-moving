@@ -228,6 +228,60 @@ textarea:focus-visible {
 .mission-composer textarea:focus-visible {
   outline: none;
 }
+.composer-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 5px 13px;
+}
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--blue);
+}
+.voice-status > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.voice-status strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+.voice-status small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.voice-status.is-listening,
+.voice-status.is-listening strong { color: var(--green); }
+.voice-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid #cbd7ff;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 750;
+}
+.voice-button:hover,
+.voice-button:focus-visible { background: #e0e8ff; }
+.voice-button.is-listening {
+  border-color: #abefc6;
+  background: var(--green-soft);
+  color: var(--green);
+}
 .composer-footer {
   border-top: 1px solid var(--line);
   display: flex;
@@ -1474,6 +1528,8 @@ body {
   .hero-signal { transform: none; }
   .mission-composer { margin-top: 34px; padding: 12px; }
   .mission-composer textarea { min-height: 116px; font-size: 15px; }
+  .composer-tools { align-items: stretch; flex-direction: column; gap: 10px; }
+  .voice-button { width: 100%; }
   .how-it-works { padding: 28px 16px 48px; }
   .topbar { height: 64px; padding: 0 16px; }
   .mission-rail { padding: 10px 12px 7px; }
