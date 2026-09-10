@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -301,7 +308,7 @@ function Landing({
   onDemo,
 }: {
   request: string;
-  setRequest: (value: string) => void;
+  setRequest: Dispatch<SetStateAction<string>>;
   onStart: () => void;
   onDemo: () => void;
 }) {
@@ -326,6 +333,7 @@ function Landing({
       setVoiceStatus("Voice input is not supported in this browser.");
       return;
     }
+    if (request.trim() === initialRequest.trim()) setRequest("");
     const recognition = new Recognition();
     recognition.lang = "en-US";
     recognition.interimResults = false;
@@ -338,7 +346,11 @@ function Landing({
         .filter(Boolean)
         .join(" ");
       if (transcript) {
-        setRequest(`${request.trim()} ${transcript}`.trim());
+        setRequest((current) => {
+          const base =
+            current.trim() === initialRequest.trim() ? "" : current.trim();
+          return [base, transcript].filter(Boolean).join(" ");
+        });
         setVoiceStatus("Added to your request. You can edit it before starting.");
       }
     };
