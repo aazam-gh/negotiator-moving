@@ -1081,7 +1081,7 @@ function QuoteRow({
   return (
     <>
       <tr>
-        <td>
+        <td data-label="Provider">
           <strong>{quote.provider}</strong>
           <div className="quote-labels">
             {labels.map((label) => (
@@ -1089,20 +1089,20 @@ function QuoteRow({
             ))}
           </div>
         </td>
-        <td>
+        <td data-label="Total">
           <strong>
             {quote.total === undefined
               ? "Not stated"
               : `${quote.currency} ${quote.total.toLocaleString()}`}
           </strong>
         </td>
-        <td>{quote.availability}</td>
-        <td>{quote.disassembly}</td>
-        <td>{quote.reassembly}</td>
-        <td className={quote.insurance === "Not stated" ? "unknown" : ""}>
+        <td data-label="Availability">{quote.availability}</td>
+        <td data-label="Disassembly">{quote.disassembly}</td>
+        <td data-label="Reassembly">{quote.reassembly}</td>
+        <td data-label="Insurance" className={quote.insurance === "Not stated" ? "unknown" : ""}>
           {quote.insurance}
         </td>
-        <td>
+        <td data-label="Details">
           <button
             aria-label={`Open ${quote.provider} quote`}
             onClick={onToggle}

@@ -1434,3 +1434,120 @@ body {
   border-top-color: #cbd7ff;
   background: #f4f7ff;
 }
+
+/* Responsive mission navigation: keep the task flow reachable when the
+   desktop rail becomes a compact horizontal control strip. */
+@media (max-width: 900px) {
+  .mission-rail {
+    display: flex;
+    padding: 12px 18px 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .mission-identity {
+    padding: 0 0 10px;
+    border-bottom: 0;
+  }
+  .mission-rail nav {
+    flex-direction: row;
+    gap: 4px;
+    padding-top: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mission-rail nav::-webkit-scrollbar { display: none; }
+  .mission-rail nav button { white-space: nowrap; }
+  .rail-trust { display: none; }
+  .mission-header { max-width: none; }
+  .progress-track, .stats-grid, .overview-grid, .providers-view, .quotes-view { max-width: none; }
+}
+@media (max-width: 640px) {
+  html, body { min-width: 0; overflow-x: hidden; }
+  .landing-nav { min-height: 64px; height: auto; padding: 12px 16px; gap: 10px; }
+  .landing-nav, .landing-actions { flex-wrap: wrap; }
+  .landing-actions { gap: 7px; }
+  .landing-hero { padding: 44px 16px 38px; }
+  .landing h1 { font-size: clamp(40px, 12vw, 54px); }
+  .hero-copy > p { font-size: 17px; }
+  .hero-proof { gap: 8px 14px; }
+  .hero-proof span { font-size: 10px; }
+  .hero-signal { transform: none; }
+  .mission-composer { margin-top: 34px; padding: 12px; }
+  .mission-composer textarea { min-height: 116px; font-size: 15px; }
+  .how-it-works { padding: 28px 16px 48px; }
+  .topbar { height: 64px; padding: 0 16px; }
+  .mission-rail { padding: 10px 12px 7px; }
+  .mission-identity { gap: 8px; }
+  .mission-identity span { font-size: 12px; }
+  .mission-identity small { font-size: 10px; }
+  .mission-main { padding: 20px 12px 44px; }
+  .mission-header { gap: 14px; }
+  .mission-header h1 { font-size: 28px; }
+  .mission-meta { flex-wrap: wrap; line-height: 1.5; }
+  .progress-track { margin-top: 22px; padding: 15px 16px; grid-template-columns: repeat(6, 100px); }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-grid > div { padding: 14px 15px; }
+  .stats-grid strong { font-size: 18px; }
+  .panel-heading, .section-heading { padding: 17px 16px; }
+  .provider-toolbar { padding: 12px 16px; }
+  .provider-list { padding: 2px 16px 12px; }
+  .provider-card, .provider-card.selected { margin: 0; padding: 18px 0; }
+  .provider-title { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .provider-evidence { grid-template-columns: 1fr; }
+  .mandate-panel { margin: 14px 12px 4px; }
+  .mandate-grid { grid-template-columns: 1fr; padding: 15px 16px 6px; }
+  .mandate-help { padding: 4px 16px 16px; }
+  .approval-bar { margin: 0 -1px; padding: 14px 16px; }
+  .quote-table { min-width: 0; }
+  .quote-table, .quote-table tbody { display: block; }
+  .quote-table thead { display: none; }
+  .quote-table tr:not(.quote-detail) {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 14px;
+    padding: 12px 16px;
+  }
+  .quote-table tr:not(.quote-detail) td {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 0;
+    border: 0;
+    line-height: 1.35;
+  }
+  .quote-table tr:not(.quote-detail) td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .quote-table tr:not(.quote-detail) td:first-child {
+    display: block;
+    grid-column: 1 / -1;
+    padding-bottom: 8px;
+  }
+  .quote-table tr:not(.quote-detail) td:first-child::before,
+  .quote-table tr:not(.quote-detail) td:last-child::before { display: none; }
+  .quote-table tr:not(.quote-detail) td:last-child {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: block;
+  }
+  .quote-table tr.quote-detail { display: block; }
+  .quote-table tr.quote-detail td { display: block; padding: 16px; }
+  .quote-table tr.quote-detail td::before { display: none; }
+  .quote-review { grid-template-columns: 1fr; }
+  .quote-review label { min-width: 0; }
+  .quote-review input, .quote-review select, .quote-review textarea { width: 100%; }
+  .original-reply pre { overflow-wrap: anywhere; }
+}
+@media (max-width: 380px) {
+  .brand strong { font-size: 15px; }
+  .demo-link { padding-inline: 7px; }
+  .demo-link svg { display: none; }
+  .mission-rail nav button { padding-inline: 8px; font-size: 11px; }
+  .mission-identity small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
