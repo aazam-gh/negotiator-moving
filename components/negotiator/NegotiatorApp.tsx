@@ -10,12 +10,14 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Circle,
   Clock3,
   ExternalLink,
   Inbox,
   Mail,
   MapPin,
+  SlidersHorizontal,
   Search,
   ShieldCheck,
   Sparkles,
@@ -295,7 +297,30 @@ function Landing({
         <div className="trust-line">
           <ShieldCheck size={16} /> You approve every provider contact
         </div>
-        <h1>Stop emailing 10 businesses just to get 3 quotes.</h1>
+        <div className="hero-grid">
+          <div className="hero-copy">
+            <p className="eyebrow">Your procurement command center</p>
+            <h1>Better quotes. Less chasing.</h1>
+            <p>
+              Negotiator turns one plain-English request into a researched,
+              approval-first buying workflow.
+            </p>
+            <div className="hero-proof">
+              <span><CheckCircle2 size={14} /> Research-backed</span>
+              <span><CheckCircle2 size={14} /> Human approved</span>
+              <span><CheckCircle2 size={14} /> No hidden booking</span>
+            </div>
+          </div>
+          <div className="hero-signal" aria-label="Negotiation workflow preview">
+            <div className="signal-header"><span className="signal-dot" /> Mission live <span>•••</span></div>
+            <div className="signal-title">Doha apartment move</div>
+            <div className="signal-route"><MapPin size={14} /> West Bay <ChevronRight size={14} /> Lusail</div>
+            <div className="signal-divider" />
+            <div className="signal-row"><span>Providers researched</span><strong>05</strong></div>
+            <div className="signal-row"><span>Approval gate</span><strong className="signal-green">Ready</strong></div>
+            <div className="signal-next"><ShieldCheck size={16} /><span><b>Your call</b><small>Nothing is sent without your approval.</small></span></div>
+          </div>
+        </div>
         <p>
           Tell Negotiator what you need. It finds providers, contacts them,
           follows up, and brings you comparable offers.
@@ -617,7 +642,13 @@ function MissionWorkspace({
           providers={providers.length}
           quotes={quotes.length}
         />
-        {tab === "overview" && <Overview approved={approved} events={events} />}
+        {tab === "overview" && (
+          <Overview
+            approved={approved}
+            events={events}
+            onNavigate={setTab}
+          />
+        )}
         {tab === "providers" && (
           <Providers
             providers={providers}
@@ -646,9 +677,11 @@ function MissionWorkspace({
 function Overview({
   approved,
   events = [],
+  onNavigate,
 }: {
   approved: boolean;
   events?: string[][];
+  onNavigate: (tab: "overview" | "providers" | "quotes") => void;
 }) {
   return (
     <div className="overview-grid">
@@ -684,9 +717,12 @@ function Overview({
             ? "Three replies are ready for an apples-to-apples comparison."
             : "Choose which shortlisted businesses Negotiator may email."}
         </span>
-        <Button variant="outline">
-          {approved ? "Compare quotes" : "Review shortlist"}
-        </Button>
+          <Button
+            variant="outline"
+            onClick={() => onNavigate(approved ? "quotes" : "providers")}
+          >
+            {approved ? "Compare quotes" : "Review shortlist"} <ArrowRight size={15} />
+          </Button>
       </aside>
     </div>
   );
@@ -708,6 +744,8 @@ function Providers({
   defaultMandate: MandateDraft;
 }) {
   const [mandate, setMandate] = useState(defaultMandate);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sort, setSort] = useState<"fit" | "name">("fit");
   const updateMandate = (key: keyof MandateDraft, value: string) =>
     setMandate((current) => ({ ...current, [key]: value }));
   function toggle(id: string) {
@@ -716,6 +754,13 @@ function Providers({
     else next.add(id);
     setSelected(next);
   }
+  const visibleProviders = providers
+    .filter((provider) =>
+      `${provider.name} ${provider.summary}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()),
+    )
+    .sort((a, b) => (sort === "fit" ? b.score - a.score : a.name.localeCompare(b.name)));
   return (
     <section className="providers-view">
       <SectionHeading
@@ -784,8 +829,27 @@ function Providers({
           </small>
         </div>
       )}
+      <div className="provider-toolbar">
+        <label className="search-control">
+          <Search size={15} />
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search shortlist"
+            aria-label="Search provider shortlist"
+          />
+        </label>
+        <label className="sort-control">
+          <SlidersHorizontal size={14} />
+          <span>Sort</span>
+          <select value={sort} onChange={(event) => setSort(event.target.value as "fit" | "name")} aria-label="Sort providers">
+            <option value="fit">Best fit</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+      </div>
       <div className="provider-list">
-        {providers.map((provider) => (
+        {visibleProviders.map((provider) => (
           <article
             className={`provider-card ${selected.has(provider.id) ? "selected" : ""}`}
             key={provider.id}
@@ -840,6 +904,9 @@ function Providers({
             </div>
           </article>
         ))}
+        {!visibleProviders.length && (
+          <div className="empty-state"><Search size={20} /><strong>No providers match</strong><span>Try a different search term.</span></div>
+        )}
       </div>
       {!approved && (
         <div className="approval-bar">
@@ -913,6 +980,9 @@ function Quotes({ quotes, demo }: { quotes: QuoteCard[]; demo: boolean }) {
         </p>
       </div>
       <div className="quote-table-wrap">
+        {!quotes.length && (
+          <div className="empty-state quote-empty"><Inbox size={22} /><strong>Waiting for replies</strong><span>Approved providers will appear here as they respond.</span></div>
+        )}
         <table className="quote-table">
           <thead>
             <tr>

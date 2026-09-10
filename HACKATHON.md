@@ -15,7 +15,8 @@ Negotiator is an approval-first procurement workflow for moving services. It par
 - AgentMail component environment wiring is patched and deployed so its isolated durable worker receives production credentials.
 - Two authenticated production accounts were verified with distinct personal workspaces and AgentMail inboxes; cross-tenant mission dashboard, quote editing, and quote selection were rejected.
 - A controlled production negotiation survived an injected transient failure, extracted an incomplete quote, sent a policy-bounded counter, extracted a satisfactory quote, and completed only after explicit user selection.
-- Verification passed: 16 tests, TypeScript, ESLint, production build, Convex deployment, static upload, public HTTP 200, JWKS HTTP 200, and Stripe webhook route HTTP 200.
+- The UI now presents a production-oriented procurement control room: guided request entry, evidence-forward shortlist scanning, connected next actions, and responsive quote review.
+- Verification passed: 22 tests, TypeScript, ESLint, production build, Convex deployment, static upload, public HTTP 200, JWKS HTTP 200, and Stripe webhook route HTTP 200.
 
 ## SaaS boundaries
 
