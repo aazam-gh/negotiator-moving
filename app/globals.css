@@ -1396,3 +1396,41 @@ body {
   .provider-toolbar { align-items: stretch; flex-direction: column; }
   .search-control { max-width: none; }
 }
+
+/* Trust palette cleanup: warnings stay calm and analytical; green confirms,
+   blue guides, navy anchors, and grey carries neutral evidence. */
+.global-notice,
+.inline-notice {
+  border-color: #bfd0f8;
+  background: #f4f7ff;
+  color: #294a9b;
+}
+.demo-banner {
+  border-color: #cbd7ff;
+  background: #f4f7ff;
+  color: #294a9b;
+}
+.demo-banner svg { color: var(--blue); }
+.mission-state {
+  border-color: #c3d1ff;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.pulse { background: var(--blue); }
+.progress-track .current { color: var(--blue); }
+.progress-track .current span {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+.provider-evidence .concern {
+  color: #59677b;
+  background: #f1f4f8;
+}
+.recommendation {
+  border-color: #abefc6;
+  background: var(--green-soft);
+}
+.approval-bar {
+  border-top-color: #cbd7ff;
+  background: #f4f7ff;
+}
