@@ -1488,6 +1488,11 @@ body {
   border-top-color: #cbd7ff;
   background: #f4f7ff;
 }
+.composer-footer button:not(:disabled):hover,
+.composer-footer button:not(:disabled):focus-visible {
+  background: var(--blue) !important;
+  color: #fff !important;
+}
 
 /* Responsive mission navigation: keep the task flow reachable when the
    desktop rail becomes a compact horizontal control strip. */
